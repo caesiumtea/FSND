@@ -201,9 +201,22 @@ def show_venue(venue_id):
   # shows the venue page with the given venue_id
   # TODO: replace with real venue data from the venues table, using venue_id
 
-  data = Venue.query.get(venue_id)
+  data = Venue.query.get(venue_id) #get object for this venue
+  currentTime = datetime.now(timezone.utc)
+  showsQo = Show.query.filter_by(venue_id=venue_id) # query object for all
+                                                    # shows for this venue
 
+  # select shows by comparing show time against current time
+  data['past_shows'] = showsQo.filter(
+          dateutil.parser.parse(Show.start_time) < currentTime).get()
+  data['past_shows_count'] = showsQo.filter(
+          dateutil.parser.parse(Show.start_time) < currentTime).count()
+  data['upcoming_shows'] = showsQo.filter(
+          dateutil.parser.parse(Show.start_time) > currentTime).get()
+  data['upcoming_shows_count'] = showsQo.filter(
+          dateutil.parser.parse(Show.start_time) > currentTime).count()
 
+  # fake data:
   # data1={
   #   "id": 1,
   #   "name": "The Musical Hop",
