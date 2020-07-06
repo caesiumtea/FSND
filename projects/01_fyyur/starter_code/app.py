@@ -124,6 +124,38 @@ app.jinja_env.filters['datetime'] = format_datetime
 def index():
   return render_template('pages/home.html')
 
+#  ----------------------------------------------------------------
+# Helper functions for controllers
+#  ----------------------------------------------------------------
+
+# search Area objects for one that matches the city and state arguments
+# and return its id, or in case of an error, return None
+def getAreaId(city, state):
+  # generate query object for areas matching city and state argument
+  areaQo = Area.query.filter_by(state=state).filter_by(city=city)
+
+  # if that query returns at least one object, then the city already exists  
+  if areaQo.count() >= 1:
+    # get the id of the area selected by the query.
+    # first() is a simplification, assuming that the model will contain
+    # only one area with that city/state combo.
+    return areaQo.first().id
+  else:
+    # query found no objects matching city and state, so it needs to be added
+    try:
+      newArea = Area(city=city, state=state)
+      db.session.add(newArea)
+      db.session.commit()
+      areaId = newArea.id
+    except:
+      # if commit fails, rollback and return None so the calling function knows
+      # to show an error message
+      db.session.rollback()
+      areaId = None
+    finally:
+      db.session.close()
+      return areaId
+
 
 #  Venues
 #  ----------------------------------------------------------------
@@ -311,21 +343,59 @@ def create_venue_submission():
   # TODO: insert form data as a new Venue record in the db, instead
   # TODO: modify data to be the data object returned from db insertion
 
-  # on successful db insert, flash success
-  flash('Venue ' + request.form['name'] + ' was successfully listed!')
-  # TODO: on unsuccessful db insert, flash an error instead.
-  # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
-  # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
-  return render_template('pages/home.html')
+  name = request.form['name']
+  
+  city = request.form['city']
+  state = request.form['state']
+  areaId = getAreaId(city, state)
+
+  address = request.form['address']
+  phone = request.form['phone']
+  genres = request.form['genres']
+  imgLink = request.form['image_link']
+  fbLink = request.form['facebook_link']
+
+  if areaId == None:
+    # if getAreaId returned None, it means there was a database error upon
+    # trying to add a new Area object, so flash an error message
+    flash('Error occurred! Venue ' + name + ' was not listed.')
+    return render_template('pages/home.html')
+
+  try:
+    newVenue = Venue(name=name, area_id=areaId, address=address, phone=phone,
+      genres=genres, image_link=imgLink, facebook_link=fbLink)
+    db.session.add(newVenue)
+    db.session.commit()
+
+    # on successful db insert, flash success
+    flash('Venue ' + request.form['name'] + ' was successfully listed!')
+
+  except:
+    db.session.rollback()
+    # TODO: on unsuccessful db insert, flash an error instead.
+    # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
+    # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
+    flash('Error occurred! Venue ' + name + ' was not listed.')
+
+  finally:
+    db.session.close()
+    return render_template('pages/home.html')
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
 def delete_venue(venue_id):
   # TODO: Complete this endpoint for taking a venue_id, and using
   # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
+  try:
+    db.session.delete(Venue.query.get(venue_id))
+    db.session.commit()
+  except:
+    db.session.rollback()
+  finally:
+    db.session.close()
+    return None
 
   # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
   # clicking that button delete it from the db then redirect the user to the homepage
-  return None
 
 #  Artists
 #  ----------------------------------------------------------------
