@@ -54,6 +54,7 @@ class Venue(db.Model):
   seeking_talent = db.Column(db.Boolean, default=False)
   seeking_desc = db.Column(db.String())
   shows = db.relationship('Show', backref='venue', lazy='joined')
+
   # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
 class Artist(db.Model):
@@ -77,6 +78,8 @@ class Artist(db.Model):
   seeking_venue = db.Column(db.Boolean, default=False)
   seeking_desc = db.Column(db.String())
   shows = db.relationship('Show', backref='artist', lazy='joined')
+
+
   # TODO: implement any missing fields, as a database migration using Flask-Migrate
 
 class Show(db.Model):
@@ -128,6 +131,45 @@ def index():
 # Helper functions for controllers
 #  ----------------------------------------------------------------
 
+# all time-related logic is encapsulated in the following two helper functions
+
+# takes in an artist or venue object and returns a list of its upcoming shows.
+# if the object passed is not an artist or venue, it returns None.
+def getUpcoming(obj):
+  result = []
+  currentTime = datetime.now(timezone.utc)
+
+  # if object is a venue, query shows by venue id
+  if type(obj) == Venue:
+    result = Show.query.filter_by(venue_id=obj.id).filter(
+      Show.start_time > currentTime).all()
+  # if object is an artist, query shows by artist id
+  elif type(obj) == Artist:
+    result = Show.query.filter_by(artist_id=obj.id).filter(
+      Show.start_time > currentTime).all()
+  else: # not an artist or venue, so return none
+    return None
+  return result
+
+  # takes in an artist or venue object and returns a list of its upcoming shows.
+  # if the object passed is not an artist or venue, it returns None.
+def getPast(obj):
+  result = []
+  currentTime = datetime.now(timezone.utc)
+
+  # if object is a venue, query shows by venue id
+  if type(obj) == Venue:
+    result = Show.query.filter_by(venue_id=obj.id).filter(
+      Show.start_time <= currentTime).all()
+  # if object is an artist, query shows by artist id
+  elif type(obj) == Artist:
+    result = Show.query.filter_by(artist_id=obj.id).filter(
+      Show.start_time <= currentTime).all()
+  else: # not an artist or venue, so return none
+    return None
+  return result
+
+
 # search Area objects for one that matches the city and state arguments
 # and return its id, or in case of an error, return None
 def getAreaId(city, state):
@@ -161,20 +203,17 @@ def getAreaId(city, state):
 # if the function is called on something other than an artist or object, it
 # returns None.
 def getIdNameUpcoming(obj):
-  result = {}
-  result['id'] = obj.id
-  result['name'] = obj.name
-  # if object is a venue, query shows by venue id
-  if type(obj) == Venue:
-    result['num_upcoming_shows'] = Shows.query.filter_by(venue_id=obj.id).filter(
-      dateutil.parser.parse(Show.start_time) > currentTime).count()
-  # if object is an artist, query shows by artist id
-  elif type(obj) == Artist:
-    result['num_upcoming_shows'] = Shows.query.filter_by(artist_id=obj.id).filter(
-      dateutil.parser.parse(Show.start_time) > currentTime).count()
-  else: # not an artist or venue, so return none
+  if type(obj) == Artist or type(obj) == Venue:
+    result = {
+      'id': obj.id,
+      'name': obj.name,
+      # call helper function to get a list of upcoming shows, then get length
+      # of the list to count number of shows
+      'num_upcoming_shows': len(getUpcoming(obj))
+    }
+    return result
+  else:
     return None
-  return result
 
 #  Venues
 #  ----------------------------------------------------------------
@@ -189,19 +228,25 @@ def venues():
   # each venue object contains id, name, and num_upcoming_shows
 
   data = []
-  areas = Area.query.order_by('city').order_by('state').all()
+  areas = Area.query.order_by('state').order_by('city').all()
   venues = Venue.query.order_by('id').all()
-  showsQo = Show.query #query object for parsing later
-  currentTime = datetime.now(timezone.utc)
 
   for a in areas:
-    areaData = {}
-    areaData['city'] = a.city
-    areaData['state'] = a.state
+    areaData = {
+    'city':  a.city,
+    'state': a.state,
+    'venues': []
+    }
     for v in venues:
-      venueData = getIdNameUpcoming(v)
-      areaData['venues'] = venueData
+      if v.area_id == a.id:
+        # call helper function to generate a dict with just the venue data
+        # needed by the response
+        venueData = getIdNameUpcoming(v)
+        # append to the list of venues that is stored in the areaData dict
+        areaData['venues'].append(venueData)
     data.append(areaData)
+
+  print(data)
 
   # old code with baked in data:
   # data=[{
@@ -242,7 +287,7 @@ def search_venues():
   for v in venues:
     venueResult.append(getIdNameUpcoming(v))
 
-  response = {"count": count, "data": venueResult}
+  response = {'count': count, 'data': venueResult}
 
   # old fake data:
   # response={
@@ -260,20 +305,30 @@ def show_venue(venue_id):
   # shows the venue page with the given venue_id
   # TODO: replace with real venue data from the venues table, using venue_id
 
-  data = Venue.query.get(venue_id) #get object for this venue
-  currentTime = datetime.now(timezone.utc)
-  showsQo = Show.query.filter_by(venue_id=venue_id) # query object for all
-                                                    # shows for this venue
+  venue = Venue.query.get(venue_id)
 
-  # select shows by comparing show time against current time
-  data['past_shows'] = showsQo.filter(
-          dateutil.parser.parse(Show.start_time) < currentTime).get()
-  data['past_shows_count'] = showsQo.filter(
-          dateutil.parser.parse(Show.start_time) < currentTime).count()
-  data['upcoming_shows'] = showsQo.filter(
-          dateutil.parser.parse(Show.start_time) > currentTime).get()
-  data['upcoming_shows_count'] = showsQo.filter(
-          dateutil.parser.parse(Show.start_time) > currentTime).count()
+  past = getPast(venue) # function returns list of past shows
+  future = getUpcoming(venue) # function returns list of upcoming shows
+  area = Area.query.get(venue.area_id)
+
+  data = {
+    "id": venue.id,
+    "name": venue.name,
+    "genres": venue.genres,
+    "address": venue.address,
+    "city": area.city,
+    "state": area.state,
+    "phone": venue.phone,
+    "website": venue.website,
+    "facebook_link": venue.facebook_link,
+    "seeking_talent": venue.seeking_talent,
+    "seeking_description": venue.seeking_desc,
+    "image_link": venue.image_link,
+    "past_shows": past,
+    "upcoming_shows": future,
+    "past_shows_count": len(past),
+    "upcoming_shows_count": len(future)
+  }
 
   # fake data:
   # data1={
