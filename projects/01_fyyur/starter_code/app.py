@@ -425,17 +425,17 @@ def create_venue_submission():
   # TODO: insert form data as a new Venue record in the db, instead
   # TODO: modify data to be the data object returned from db insertion
 
-  name = request.form['name']
+  name = request.form.get('name')
   
-  city = request.form['city']
-  state = request.form['state']
+  city = request.form.get('city')
+  state = request.form.get('state')
   areaId = getAreaId(city, state)
 
-  address = request.form['address']
-  phone = request.form['phone']
-  genres = request.form['genres']
-  imgLink = request.form['image_link']
-  fbLink = request.form['facebook_link']
+  address = request.form.get('address')
+  phone = request.form.get('phone')
+  genres = request.form.getlist('genres')
+  imgLink = request.form.get('image_link')
+  fbLink = request.form.get('facebook_link')
 
   if areaId == None:
     # if getAreaId returned None, it means there was a database error upon
@@ -450,7 +450,7 @@ def create_venue_submission():
     db.session.commit()
 
     # on successful db insert, flash success
-    flash('Venue ' + request.form['name'] + ' was successfully listed!')
+    flash('Venue ' + name + ' was successfully listed!')
 
   except:
     db.session.rollback()
