@@ -85,8 +85,11 @@ class VenueForm(Form):
     phone = StringField(
         'phone'
     )
+    # making image link required because the template has no option for cleanly
+    # handling lack of image, and I don't want to edit the template more than
+    # strictly required
     image_link = StringField(
-        'image_link'
+        'image_link', validators=[DataRequired()]
     )
     genres = SelectMultipleField(
         # TODO implement enum restriction
@@ -184,8 +187,11 @@ class ArtistForm(Form):
         # TODO implement validation logic for state
         'phone'
     )
+    # making image link required because the template has no option for cleanly
+    # handling lack of image, and I don't want to edit the template more than
+    # strictly required
     image_link = StringField(
-        'image_link'
+        'image_link', validators=[DataRequired()]
     )
     genres = SelectMultipleField(
         # TODO implement enum restriction
