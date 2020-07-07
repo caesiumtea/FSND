@@ -156,6 +156,25 @@ def getAreaId(city, state):
       db.session.close()
       return areaId
 
+# takes in a venue or artist and returns a dict containing the object's id, name,
+# and number of upcoming shows, as is required for a few different endpoints.
+# if the function is called on something other than an artist or object, it
+# returns None.
+def getIdNameUpcoming(obj):
+  result = {}
+  result['id'] = obj.id
+  result['name'] = obj.name
+  # if object is a venue, query shows by venue id
+  if type(obj) == Venue:
+    result['num_upcoming_shows'] = Shows.query.filter_by(venue_id=obj.id).filter(
+      dateutil.parser.parse(Show.start_time) > currentTime).count()
+  # if object is an artist, query shows by artist id
+  elif type(obj) == Artist:
+    result['num_upcoming_shows'] = Shows.query.filter_by(artist_id=obj.id).filter(
+      dateutil.parser.parse(Show.start_time) > currentTime).count()
+  else: # not an artist or venue, so return none
+    return None
+  return result
 
 #  Venues
 #  ----------------------------------------------------------------
@@ -180,11 +199,7 @@ def venues():
     areaData['city'] = a.city
     areaData['state'] = a.state
     for v in venues:
-      venueData = {}
-      venueData['id'] = v.id
-      venueData['name'] = v.name
-      venueData['num_upcoming_shows'] = showsQo.filter_by(venue_id=v.id).filter(
-          dateutil.parser.parse(Show.start_time) > currentTime).count()
+      venueData = getIdNameUpcoming(v)
       areaData['venues'] = venueData
     data.append(areaData)
 
@@ -218,14 +233,26 @@ def search_venues():
   # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
   # seach for Hop should return "The Musical Hop".
   # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
-  response={
-    "count": 1,
-    "data": [{
-      "id": 2,
-      "name": "The Dueling Pianos Bar",
-      "num_upcoming_shows": 0,
-    }]
-  }
+
+  search = request.form['search_term']
+  venues = Venue.query.filter(Venue.name.ilike(f'%{search}%')).all()
+  count = len(venues)
+
+  venueResult = []
+  for v in venues:
+    venueResult.append(getIdNameUpcoming(v))
+
+  response = {"count": count, "data": venueResult}
+
+  # old fake data:
+  # response={
+  #   "count": 1,
+  #   "data": [{
+  #     "id": 2,
+  #     "name": "The Dueling Pianos Bar",
+  #     "num_upcoming_shows": 0,
+  #   }]
+  # }
   return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
 
 @app.route('/venues/<int:venue_id>')
