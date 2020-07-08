@@ -110,7 +110,7 @@ class Area(db.Model):
 #----------------------------------------------------------------------------#
 
 def format_datetime(value, format='medium'):
-  date = dateutil.parser.parse(value)
+  date = dateutil.parser.parse(str(value))
   if format == 'full':
       format="EEEE MMMM, d, y 'at' h:mma"
   elif format == 'medium':
@@ -141,12 +141,28 @@ def getUpcoming(obj):
 
   # if object is a venue, query shows by venue id
   if type(obj) == Venue:
-    result = Show.query.filter_by(venue_id=obj.id).filter(
-      Show.start_time > currentTime).all()
+    shows = Show.query.join(Artist).filter(Show.venue_id == obj.id,
+      Show.start_time > currentTime).all() # list of Show objs
+    for s in shows:
+      data = {
+        'artist_id': s.artist_id,
+        'artist_name': s.artist.name,
+        'artist_image_link': s.artist.image_link,
+        'start_time': s.start_time,
+      }
+      result.append(data)
   # if object is an artist, query shows by artist id
   elif type(obj) == Artist:
-    result = Show.query.filter_by(artist_id=obj.id).filter(
-      Show.start_time > currentTime).all()
+    shows = Show.query.join(Venue).filter(Show.artist_id == obj.id,
+      Show.start_time > currentTime).all() # list of Show objs
+    for s in shows:
+      data = {
+        'venue_id': s.venue_id,
+        'venue_name': s.venue.name,
+        'venue_image_link': s.venue.image_link,
+        'start_time': s.start_time,
+      }
+      result.append(data)
   else: # not an artist or venue, so return none
     return None
   return result
@@ -159,12 +175,30 @@ def getPast(obj):
 
   # if object is a venue, query shows by venue id
   if type(obj) == Venue:
-    result = Show.query.filter_by(venue_id=obj.id).filter(
-      Show.start_time <= currentTime).all()
+    shows = Show.query.join(Artist).filter(Show.venue_id == obj.id,
+      Show.start_time <= currentTime).all() # list of Show objs
+    for s in shows:
+      data = {
+        'artist_id': s.artist_id,
+        'artist_name': s.artist.name,
+        'artist_image_link': s.artist.image_link,
+        'start_time': s.start_time,
+      }
+      result.append(data)
+
   # if object is an artist, query shows by artist id
   elif type(obj) == Artist:
-    result = Show.query.filter_by(artist_id=obj.id).filter(
-      Show.start_time <= currentTime).all()
+    shows = Show.query.join(Venue).filter(Show.artist_id == obj.id,
+      Show.start_time <= currentTime).all() # list of Show objs
+    for s in shows:
+      data = {
+        'venue_id': s.venue_id,
+        'venue_name': s.venue.name,
+        'venue_image_link': s.venue.image_link,
+        'start_time': s.start_time,
+      }
+      result.append(data)
+
   else: # not an artist or venue, so return none
     return None
   return result
@@ -174,7 +208,7 @@ def getPast(obj):
 # and return its id, or in case of an error, return None
 def getAreaId(city, state):
   # generate query object for areas matching city and state argument
-  areaQo = Area.query.filter_by(state=state).filter_by(city=city)
+  areaQo = Area.query.filter_by(state=state, city=city)
 
   # if that query returns at least one object, then the city already exists  
   if areaQo.count() >= 1:
@@ -245,8 +279,6 @@ def venues():
         # append to the list of venues that is stored in the areaData dict
         areaData['venues'].append(venueData)
     data.append(areaData)
-
-  print(data)
 
   # old code with baked in data:
   # data=[{
@@ -484,8 +516,6 @@ def delete_venue(venue_id):
 
 @app.route('/venues/<int:venue_id>/edit', methods=['GET'])
 def edit_venue(venue_id):
-  form = VenueForm()
-  
   venue = Venue.query.get(venue_id)
   area = Area.query.get(venue.area_id)
 
@@ -501,10 +531,11 @@ def edit_venue(venue_id):
     "facebook_link": venue.facebook_link,
     "seeking_talent": venue.seeking_talent,
     "seeking_description": venue.seeking_desc,
-    "image_link": venue.image_link,
-    
+    "image_link": venue.image_link
   }
-  
+
+  form = VenueForm(data=data)
+
   # venue={
   #   "id": 1,
   #   "name": "The Musical Hop",
@@ -520,7 +551,7 @@ def edit_venue(venue_id):
   #   "image_link": "https://images.unsplash.com/photo-1543900694-133f37abaaa5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=400&q=60"
   # }
   # TODO: populate form with values from venue with ID <venue_id>
-  return render_template('forms/edit_venue.html', form=form, venue=venue)
+  return render_template('forms/edit_venue.html', form=form, venue=data)
 
 @app.route('/venues/<int:venue_id>/edit', methods=['POST'])
 def edit_venue_submission(venue_id):
@@ -657,9 +688,7 @@ def show_artist(artist_id):
 #  Update
 #  ----------------------------------------------------------------
 @app.route('/artists/<int:artist_id>/edit', methods=['GET'])
-def edit_artist(artist_id):
-  form = ArtistForm()
-  
+def edit_artist(artist_id):  
   artist = Artist.query.get(artist_id)
   area = Area.query.get(artist.area_id)
 
@@ -676,6 +705,8 @@ def edit_artist(artist_id):
     "seeking_description": artist.seeking_desc,
     "image_link": artist.image_link,
   }
+
+  form = ArtistForm(data=data)
 
   # artist={
   #   "id": 4,
@@ -812,7 +843,7 @@ def shows():
     artist = Artist.query.get(s.artist_id)
     showData = {
       'venue_id': s.venue_id,
-      'venue_name': Venue.query.get(s.venue_id),
+      'venue_name': Venue.query.get(s.venue_id).name,
       'artist_id': s.artist_id,
       'artist_name': artist.name,
       'artist_image_link': artist.image_link,
