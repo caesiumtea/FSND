@@ -206,7 +206,7 @@ def getPast(obj):
 
 
 # search Area objects for one that matches the city and state arguments
-# and return its id, or in case of an error, return None
+# and return its id, or if the area doesn't exist,
 def getAreaId(city, state):
   # generate query object for areas matching city and state argument
   areaQo = Area.query.filter_by(state=state, city=city)
@@ -215,23 +215,17 @@ def getAreaId(city, state):
   if areaQo.count() >= 1:
     # get the id of the area selected by the query.
     # first() is a simplification, assuming that the model will contain
-    # only one area with that city/state combo.
+    # only one area with that city/state combo. 
     return areaQo.first().id
   else:
     # query found no objects matching city and state, so it needs to be added
-    try:
-      newArea = Area(city=city, state=state)
-      db.session.add(newArea)
-      db.session.commit()
-      areaId = newArea.id
-    except:
-      # if commit fails, rollback and return None so the calling function knows
-      # to show an error message
-      db.session.rollback()
-      areaId = None
-    finally:
-      db.session.close()
-      return areaId
+    newArea = Area(city=city, state=state)
+    db.session.add(newArea)
+    db.session.commit()
+    areaId = newArea.id
+    # no session.close here because it's always called from inside a function
+    # that itself ends in a commit and close.
+    return areaId
 
 # takes in a venue or artist and returns a dict containing the object's id, name,
 # and number of upcoming shows, as is required for a few different endpoints.
@@ -264,22 +258,21 @@ def venues():
 
   data = []
   areas = Area.query.order_by('state').order_by('city').all()
-  venues = Venue.query.order_by('name').all()
 
   for a in areas:
-    areaData = {
-    'city':  a.city,
-    'state': a.state,
-    'venues': []
-    }
-    for v in venues:
-      if v.area_id == a.id:
+    if len(a.venues) > 0:
+      areaData = {
+      'city':  a.city,
+      'state': a.state,
+      'venues': []
+      }
+      for v in a.venues:
         # call helper function to generate a dict with just the venue data
         # needed by the response
         venueData = getIdNameUpcoming(v)
         # append to the list of venues that is stored in the areaData dict
         areaData['venues'].append(venueData)
-    data.append(areaData)
+      data.append(areaData)
 
   # old code with baked in data:
   # data=[{
@@ -470,12 +463,6 @@ def create_venue_submission():
   imgLink = request.form.get('image_link')
   fbLink = request.form.get('facebook_link')
 
-  if areaId == None:
-    # if getAreaId returned None, it means there was a database error upon
-    # trying to add a new Area object, so flash an error message
-    flash('Error occurred! Venue ' + name + ' was not listed.')
-    return render_template('pages/home.html')
-
   try:
     newVenue = Venue(name=name, area_id=areaId, address=address, phone=phone,
       genres=genres, image_link=imgLink, facebook_link=fbLink)
@@ -578,13 +565,6 @@ def edit_venue_submission(venue_id):
     venue.website = request.form.get('website')
     venue.seeking_venue = request.form.get('seeking_venue')
     venue.seeking_desc = request.form.get('seeking_description')
-
-    # check for failure in creating new area
-    if venue.area_id == None:
-      # if getAreaId returned None, it means there was a database error upon
-      # trying to add a new Area object, so flash an error message
-      flash('Error occurred! Venue ' + venue.name + ' was not updated.')
-      return redirect(url_for('show_venue', venue_id=venue_id))
 
     # commit update
     db.session.commit()
@@ -749,13 +729,6 @@ def edit_artist_submission(artist_id):
     artist.website = request.form.get('website')
     artist.seeking_venue = request.form.get('seeking_venue')
     artist.seeking_desc = request.form.get('seeking_description')
-
-    # check for failure in creating new area
-    if artist.area_id == None:
-      # if getAreaId returned None, it means there was a database error upon
-      # trying to add a new Area object, so flash an error message
-      flash('Error occurred! Artist ' + artist.name + ' was not updated.')
-      return redirect(url_for('show_artist', artist_id=artist_id))
   
     # commit update
     db.session.commit()
@@ -794,12 +767,6 @@ def create_artist_submission():
   genres = request.form.getlist('genres')
   imgLink = request.form.get('image_link')
   fbLink = request.form.get('facebook_link')
-
-  if areaId == None:
-    # if getAreaId returned None, it means there was a database error upon
-    # trying to add a new Area object, so flash an error message
-    flash('Error occurred! Artist ' + name + ' was not listed.')
-    return render_template('pages/home.html')
 
   try:
     newArtist = Artist(name=name, area_id=areaId, phone=phone,
