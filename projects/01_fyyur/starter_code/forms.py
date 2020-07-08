@@ -1,7 +1,7 @@
 from datetime import datetime
 from flask_wtf import Form
 from wtforms import StringField, SelectField, SelectMultipleField, DateTimeField
-from wtforms.validators import DataRequired, AnyOf, URL
+from wtforms.validators import DataRequired, AnyOf, URL, Length
 
 class ShowForm(Form):
     artist_id = StringField(
@@ -18,10 +18,10 @@ class ShowForm(Form):
 
 class VenueForm(Form):
     name = StringField(
-        'name', validators=[DataRequired()]
+        'name', validators=[DataRequired(), validators=[Length(min=1, max=120)],]
     )
     city = StringField(
-        'city', validators=[DataRequired()]
+        'city', validators=[DataRequired(), Length(min=2, max=120)]
     )
     state = SelectField(
         'state', validators=[DataRequired()],
@@ -80,16 +80,16 @@ class VenueForm(Form):
         ]
     )
     address = StringField(
-        'address', validators=[DataRequired()]
+        'address', validators=[DataRequired(), Length(min=10, max=120)]
     )
     phone = StringField(
-        'phone'
+        'phone', validators=[Length(min=10, max=20)]
     )
     # making image link required because the template has no option for cleanly
     # handling lack of image, and I don't want to edit the template more than
     # strictly required
     image_link = StringField(
-        'image_link', validators=[DataRequired()]
+        'image_link', validators=[DataRequired(), URL(), Length(min=10, max=500)]
     )
     genres = SelectMultipleField(
         # TODO implement enum restriction
@@ -117,15 +117,31 @@ class VenueForm(Form):
         ]
     )
     facebook_link = StringField(
-        'facebook_link', validators=[URL()]
+        'facebook_link', validators=[URL(), Length(min=10, max=120)]
     )
+    website = StringField(
+        'website', validators=[URL(), Length(min=10, max=120)]
+    )
+    seeking_talent = SelectField(
+        'seeking_talent',
+        choices=[
+            (True, 'Yes'),
+            (False, 'No'),
+            ]
+    )
+    seeking_description = StringField(
+        'seeking_description',
+        validators=[Length(min=10)],
+    )
+
+
 
 class ArtistForm(Form):
     name = StringField(
-        'name', validators=[DataRequired()]
+        'name', validators=[DataRequired(), validators=[Length(min=1, max=120)],]
     )
     city = StringField(
-        'city', validators=[DataRequired()]
+        'city', validators=[DataRequired(), Length(min=2, max=120)]
     )
     state = SelectField(
         'state', validators=[DataRequired()],
@@ -184,14 +200,13 @@ class ArtistForm(Form):
         ]
     )
     phone = StringField(
-        # TODO implement validation logic for state
-        'phone'
+        'phone', validators=[Length(min=10, max=20)]
     )
     # making image link required because the template has no option for cleanly
     # handling lack of image, and I don't want to edit the template more than
     # strictly required
     image_link = StringField(
-        'image_link', validators=[DataRequired()]
+        'image_link', validators=[DataRequired(), URL(), Length(min=10, max=500)]
     )
     genres = SelectMultipleField(
         # TODO implement enum restriction
@@ -219,8 +234,21 @@ class ArtistForm(Form):
         ]
     )
     facebook_link = StringField(
-        # TODO implement enum restriction
-        'facebook_link', validators=[URL()]
+        'facebook_link', validators=[URL(), Length(min=10, max=120)]
+    )
+    website = StringField(
+        'website', validators=[URL(), Length(min=10, max=120)]
+    )
+    seeking_venue = SelectField(
+        'seeking_venue',
+        choices=[
+            (True, 'Yes'),
+            (False, 'No'),
+            ]
+    )
+    seeking_description = StringField(
+        'seeking_description',
+        validators=[Length(min=10)],
     )
 
 # TODO IMPLEMENT NEW ARTIST FORM AND NEW SHOW FORM
