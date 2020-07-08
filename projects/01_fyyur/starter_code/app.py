@@ -259,8 +259,8 @@ def venues():
   data = []
   areas = Area.query.order_by('state').order_by('city').all()
 
-  for a in areas:
-    if len(a.venues) > 0:
+  for a in areas: # loop through all areas
+    if len(a.venues) > 0: # only show them if they contain venues
       areaData = {
       'city':  a.city,
       'state': a.state,
@@ -272,7 +272,7 @@ def venues():
         venueData = getIdNameUpcoming(v)
         # append to the list of venues that is stored in the areaData dict
         areaData['venues'].append(venueData)
-      data.append(areaData)
+      data.append(areaData) # add area to the result
 
   # old code with baked in data:
   # data=[{
