@@ -14,7 +14,6 @@ from flask_wtf import Form
 from forms import *
 from flask_migrate import Migrate
 from datetime import datetime, timezone
-import sys
 
 #----------------------------------------------------------------------------#
 # App Config.
@@ -253,10 +252,6 @@ def venues():
   # TODO: replace with real venues data.
   #       num_shows should be aggregated based on number of upcoming shows per venue.
   
-  # data should be a list of "area" objects
-  # each area contains city (str), state (str), and venues (list of objects)
-  # each venue object contains id, name, and num_upcoming_shows
-
   data = []
   areas = Area.query.order_by('state').order_by('city').all()
 
@@ -448,7 +443,6 @@ def edit_venue_submission(venue_id):
     # if commit fails, roll back changes
     db.session.rollback()
     flash('Error occurred! Venue ' + venue.name + ' was not updated.')
-    print(sys.exc_info())
   finally:
     db.session.close()
 
@@ -580,7 +574,6 @@ def edit_artist_submission(artist_id):
     # if commit fails, roll back changes
     db.session.rollback()
     flash('Error occurred! Artist ' + artist.name + ' was not updated.')
-    print(sys.exc_info())
   finally:
     db.session.close()
 
@@ -649,7 +642,7 @@ def shows():
   #       num_shows should be aggregated based on number of upcoming shows per venue.
 
   data = []
-  shows = Show.query.order_by('id').all() #left join?
+  shows = Show.query.order_by('id').all()
   
   for s in shows:
     artist = Artist.query.get(s.artist_id)
