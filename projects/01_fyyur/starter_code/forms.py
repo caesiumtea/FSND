@@ -1,6 +1,6 @@
 from datetime import datetime
 from flask_wtf import Form
-from wtforms import StringField, SelectField, SelectMultipleField, DateTimeField
+from wtforms import StringField, SelectField, SelectMultipleField, DateTimeField, BooleanField
 from wtforms.validators import DataRequired, AnyOf, URL, Length
 
 class ShowForm(Form):
@@ -18,7 +18,7 @@ class ShowForm(Form):
 
 class VenueForm(Form):
     name = StringField(
-        'name', validators=[DataRequired(), validators=[Length(min=1, max=120)],]
+        'name', validators=[DataRequired(), Length(min=1, max=120)]
     )
     city = StringField(
         'city', validators=[DataRequired(), Length(min=2, max=120)]
@@ -125,8 +125,8 @@ class VenueForm(Form):
     seeking_talent = SelectField(
         'seeking_talent',
         choices=[
-            (True, 'Yes'),
-            (False, 'No'),
+            ('True', 'Yes'),
+            ('', 'No') # will be converted to boolean in app.py
             ]
     )
     seeking_description = StringField(
@@ -138,7 +138,7 @@ class VenueForm(Form):
 
 class ArtistForm(Form):
     name = StringField(
-        'name', validators=[DataRequired(), validators=[Length(min=1, max=120)],]
+        'name', validators=[DataRequired(), Length(min=1, max=120)]
     )
     city = StringField(
         'city', validators=[DataRequired(), Length(min=2, max=120)]
@@ -242,13 +242,13 @@ class ArtistForm(Form):
     seeking_venue = SelectField(
         'seeking_venue',
         choices=[
-            (True, 'Yes'),
-            (False, 'No'),
-            ]
+            ('True', 'Yes'), 
+            ('', 'No') # will be converted to boolean in app.py
+        ]
     )
     seeking_description = StringField(
         'seeking_description',
-        validators=[Length(min=10)],
+        validators=[Length(min=10)]
     )
 
 # TODO IMPLEMENT NEW ARTIST FORM AND NEW SHOW FORM
